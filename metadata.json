@@ -1,0 +1,6 @@
+{
+  "name": "Pathfinder AI",
+  "description": "AI-powered career guidance platform with personalized assessments, learning roadmaps, skill gap analysis, resume review, and mock interviews.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

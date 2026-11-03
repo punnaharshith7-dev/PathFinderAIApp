@@ -1,0 +1,201 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Reusable Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidStringList(listVal, maxItems) {
+      return listVal is list &&
+             listVal.size() <= maxItems &&
+             (listVal.size() == 0 || (listVal[0] is string && listVal[0].size() <= 150));
+    }
+
+    function isValidOptionalString(data, field, maxLen) {
+      return !(field in data) || data[field] == null || (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    // 3. Entity Validation Blueprints
+    function isValidUserProfile(data) {
+      return data.userId is string &&
+             data.userId.size() >= 1 &&
+             data.userId.size() <= 128 &&
+             data.userId == request.auth.uid &&
+             data.fullName is string &&
+             data.fullName.size() >= 1 &&
+             data.fullName.size() <= 100 &&
+             data.email is string &&
+             data.email.size() >= 3 &&
+             data.email.size() <= 150 &&
+             data.xpPoints is int &&
+             data.xpPoints >= 0 &&
+             data.xpPoints <= 1000000 &&
+             data.streakDays is int &&
+             data.streakDays >= 0 &&
+             data.streakDays <= 3650 &&
+             data.readinessScore is int &&
+             data.readinessScore >= 0 &&
+             data.readinessScore <= 100 &&
+             data.assessmentCompleted is bool &&
+             (!('age' in data) || data.age == null || (data.age is int && data.age >= 10 && data.age <= 100)) &&
+             isValidOptionalString(data, 'phone', 30) &&
+             isValidOptionalString(data, 'college', 150) &&
+             isValidOptionalString(data, 'degree', 100) &&
+             isValidOptionalString(data, 'branch', 100) &&
+             isValidOptionalString(data, 'academicYear', 50) &&
+             isValidOptionalString(data, 'cgpa', 20) &&
+             isValidOptionalString(data, 'careerGoal', 300) &&
+             isValidOptionalString(data, 'targetCareerId', 100) &&
+             (!('technicalSkills' in data) || isValidStringList(data.technicalSkills, 30)) &&
+             (!('softSkills' in data) || isValidStringList(data.softSkills, 20)) &&
+             (!('interests' in data) || isValidStringList(data.interests, 20)) &&
+             (!('preferredIndustries' in data) || isValidStringList(data.preferredIndustries, 15)) &&
+             (!('bookmarkedCareerIds' in data) || isValidStringList(data.bookmarkedCareerIds, 30)) &&
+             (!('completedLessonIds' in data) || isValidStringList(data.completedLessonIds, 100)) &&
+             (!('unlockedBadgeIds' in data) || isValidStringList(data.unlockedBadgeIds, 30));
+    }
+
+    function isValidCareerGoalItem(data) {
+      return data.userId is string &&
+             data.userId.size() >= 1 &&
+             data.userId.size() <= 128 &&
+             data.userId == request.auth.uid &&
+             data.title is string &&
+             data.title.size() >= 1 &&
+             data.title.size() <= 200 &&
+             data.category is string &&
+             data.category.size() <= 40 &&
+             data.category in ['roadmap_task', 'milestone', 'certification', 'project', 'interview_session', 'assessment_record'] &&
+             data.completed is bool &&
+             isValidOptionalString(data, 'subtitle', 500) &&
+             (!('score' in data) || data.score == null || (data.score is int && data.score >= 0 && data.score <= 100));
+    }
+
+    // 4. Collection Rules: /users/{userId}
+    match /users/{userId} {
+      allow get: if isSignedIn() &&
+                    request.auth.uid == userId &&
+                    isValidId(userId);
+
+      allow list: if isSignedIn() &&
+                     request.auth.uid == userId &&
+                     existing().userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'fullName', 'email', 'xpPoints',
+                         'streakDays', 'readinessScore', 'assessmentCompleted',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'fullName', 'email', 'age', 'phone',
+                         'college', 'degree', 'branch', 'academicYear',
+                         'cgpa', 'careerGoal', 'targetCareerId', 'xpPoints',
+                         'streakDays', 'readinessScore', 'assessmentCompleted',
+                         'technicalSkills', 'softSkills', 'interests',
+                         'preferredIndustries', 'bookmarkedCareerIds',
+                         'completedLessonIds', 'unlockedBadgeIds',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidUserProfile(incoming()) &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'fullName', 'email', 'age', 'phone',
+                         'college', 'degree', 'branch', 'academicYear',
+                         'cgpa', 'careerGoal', 'targetCareerId', 'xpPoints',
+                         'streakDays', 'readinessScore', 'assessmentCompleted',
+                         'technicalSkills', 'softSkills', 'interests',
+                         'preferredIndustries', 'bookmarkedCareerIds',
+                         'completedLessonIds', 'unlockedBadgeIds',
+                         'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       existing().userId == request.auth.uid;
+
+      // 5. Subcollection Rules: /users/{userId}/goals/{goalId}
+      match /goals/{goalId} {
+        allow get: if isSignedIn() &&
+                      request.auth.uid == userId &&
+                      isValidId(userId) &&
+                      isValidId(goalId) &&
+                      existing().userId == request.auth.uid;
+
+        allow list: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       existing().userId == request.auth.uid;
+
+        allow create: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         isValidId(userId) &&
+                         isValidId(goalId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'title', 'category', 'completed', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'title', 'category', 'subtitle', 'completed', 'score', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time &&
+                         isValidCareerGoalItem(incoming());
+
+        allow update: if isSignedIn() &&
+                         isValidCareerGoalItem(incoming()) &&
+                         request.auth.uid == userId &&
+                         isValidId(userId) &&
+                         isValidId(goalId) &&
+                         existing().userId == request.auth.uid &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'title', 'category', 'subtitle', 'completed', 'score', 'updatedAt'
+                         ]);
+
+        allow delete: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         isValidId(userId) &&
+                         isValidId(goalId) &&
+                         existing().userId == request.auth.uid;
+      }
+    }
+  }
+}

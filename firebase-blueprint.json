@@ -1,0 +1,195 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Student career profile, assessment scores, skills, bookmarks, roadmap progress, and gamification stats.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated user UID matching request.auth.uid."
+        },
+        "fullName": {
+          "type": "string",
+          "description": "Student full name (1..100 chars)."
+        },
+        "email": {
+          "type": "string",
+          "description": "Student email address (3..150 chars)."
+        },
+        "age": {
+          "type": "integer",
+          "description": "Student age (10..100)."
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number (0..30 chars)."
+        },
+        "college": {
+          "type": "string",
+          "description": "College or university name (0..150 chars)."
+        },
+        "degree": {
+          "type": "string",
+          "description": "Degree program (0..100 chars)."
+        },
+        "branch": {
+          "type": "string",
+          "description": "Branch or specialization (0..100 chars)."
+        },
+        "academicYear": {
+          "type": "string",
+          "description": "Current academic year (0..50 chars)."
+        },
+        "cgpa": {
+          "type": "string",
+          "description": "Current CGPA or percentage (0..20 chars)."
+        },
+        "careerGoal": {
+          "type": "string",
+          "description": "Student career goal statement (0..300 chars)."
+        },
+        "targetCareerId": {
+          "type": "string",
+          "description": "Primary selected career ID for roadmap and skill gap tracking (0..100 chars)."
+        },
+        "xpPoints": {
+          "type": "integer",
+          "description": "Total earned XP points."
+        },
+        "streakDays": {
+          "type": "integer",
+          "description": "Current daily learning streak in days."
+        },
+        "readinessScore": {
+          "type": "integer",
+          "description": "Calculated career readiness score (0..100)."
+        },
+        "assessmentCompleted": {
+          "type": "boolean",
+          "description": "Whether the student has completed the career assessment."
+        },
+        "technicalSkills": {
+          "type": "array",
+          "description": "Bounded list of technical skills with proficiency tags (max 30)."
+        },
+        "softSkills": {
+          "type": "array",
+          "description": "Bounded list of soft skills (max 20)."
+        },
+        "interests": {
+          "type": "array",
+          "description": "Bounded list of career and hobby interests (max 20)."
+        },
+        "preferredIndustries": {
+          "type": "array",
+          "description": "Bounded list of preferred industries (max 15)."
+        },
+        "bookmarkedCareerIds": {
+          "type": "array",
+          "description": "Bounded list of bookmarked career IDs (max 30)."
+        },
+        "completedLessonIds": {
+          "type": "array",
+          "description": "Bounded list of completed roadmap module/lesson IDs (max 100)."
+        },
+        "unlockedBadgeIds": {
+          "type": "array",
+          "description": "Bounded list of unlocked achievement badge IDs (max 30)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "fullName",
+        "email",
+        "xpPoints",
+        "streakDays",
+        "readinessScore",
+        "assessmentCompleted",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CareerGoalItem": {
+      "title": "CareerGoalItem",
+      "description": "User-authored learning goal, roadmap custom task, project, certification, or interview practice session.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner user ID matching request.auth.uid."
+        },
+        "title": {
+          "type": "string",
+          "description": "Item title (1..200 chars)."
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "roadmap_task",
+            "milestone",
+            "certification",
+            "project",
+            "interview_session",
+            "assessment_record"
+          ],
+          "description": "Type of goal or record."
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "Details, notes, or feedback summary (0..500 chars)."
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Completion status."
+        },
+        "score": {
+          "type": "integer",
+          "description": "Optional score or progress percentage (0..100)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "title",
+        "category",
+        "completed",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Per-user career profile and progress document."
+    },
+    "/users/{userId}/goals/{goalId}": {
+      "schema": {
+        "$ref": "#/entities/CareerGoalItem"
+      },
+      "description": "Per-user subcollection of roadmap tasks, milestones, projects, certifications, and practice sessions."
+    }
+  }
+}
